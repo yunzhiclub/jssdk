@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Document</title>
+    <script type="text/javascript" src="http://res.wx.qq.com/open/js/jweixin-1.0.0.js"></script>
+    <script type="text/javascript" src="bower_components/angular/angular.min.js"></script>
+</head>
+
+<body ng-app="wechat" ng-controller="jssdk">
+    hello wechat js-sdk!
+    <button ng-click="chooseImage()" style="font-size:70px">选择图片</button>
+    <img ng-src="{{imgurl}}">
+    <p>{{}}</p>
+    <script type="text/javascript">
+    var app = angular.module('wechat', []);
+
+    // 为angularjs设置图片安全域
+    app.config(function($compileProvider) {
+        $compileProvider.imgSrcSanitizationWhitelist(/^\s*(wxlocalresource|https?|ftp|mailto|chrome-extension):/);
+    });
+
+    // 获取当前的url
+    var url = window.location.href.replace(window.location.hash, '');
+
+    // 定制配置信息
+    var jssdkConfig = {
+        jsApiList: ['chooseImage', 'uploadImage'],
+        debug: true,
+        appId: '',
+    };
+
+    // 控制器
+    app.controller('jssdk', function($scope, $http) {
+        // 图片位置
+        $scope.imgurl = 'image/wechat.png';
+        $scope.serverId = '';
+        //选择图片时间
+        $scope.chooseImage = function() {
+            wx.chooseImage({
+                count: 1, // 默认9
+                sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
+                sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
+                success: function(res) {
+                    $scope.imgurl = res.localIds[0];
+                    // $scope.$apply();
+
+                    // 调用上传图片接口
+                    wx.uploadImage({
+                        localId: res.localIds[0], // 需要上传的图片的本地ID，由chooseImage接口获得
+                        isShowProcess: 1,
+                        success: function(res) {
+                            // 返回图片服务器ID res.serverId,然后调用wxImgCallBack函数进行下载图片操作
+                            $scope.serverId  = res.serverId;
+                            alert('上传图片成功' + res.serverId);
+                        },
+                        fail: function(res) {
+                            alert('上传图片失败');
+                        },
+                    });
+
+
+                    // var localIds = res.localIds; // 返回选定照片的本地ID列表，localId可以作为img标签的src属性显示图片
+                }
+            });
+        };
+
+        // 发送请求，获取配置信息
+        $http({
+            url: 'sample.php?url=' + encodeURIComponent(url),
+            method: 'get',
+        }).then(function(response, status) {
+            // 返回200说明请求正常，则调用系统初始化函数
+            if (response.status == 200) {
+                init(response.data);
+            } else {
+                alert('数据返回错误', +response.status);
+            }
+        }, function(response) {
+            alert('数据返回错误:' + response.status);
+        });
+    });
+
+    // 系统初始化
+    var init = function(config) {
+        console.log(config);
+        jssdkConfig.appId = config.appId;
+        jssdkConfig.nonceStr = config.nonceStr;
+        jssdkConfig.signature = config.signature;
+        jssdkConfig.timestamp = config.timestamp;
+        wx.config(jssdkConfig);
+    };
+    </script>
+</body>
+
+</html>
